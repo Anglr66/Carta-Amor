@@ -128,7 +128,7 @@
 				const text = await new Promise((resolve, reject) => {
 					const loader = new THREE.FileLoader();
 					loader.load(
-						'project (23).json',
+						'project (24).json',
 						(t) => resolve(t),
 						(e) => {
 							if (e.lengthComputable) {
@@ -171,6 +171,100 @@
 			});
 
 			return loadPromise;
+		}
+
+
+		// BOTONES HD: los objetos de Three.js conservan su posición y sus scripts.
+		// Se reutiliza directamente la textura PNG de cada objeto, sin redibujarla.
+		function instalarBotonesHD(controller, player) {
+			const layer = document.getElementById('nudo-hd-layer');
+			const definitions = [
+				{ name: 'Objeto 1', tipo: 'mano' },
+				{ name: 'Objeto 2', tipo: 'corazon' },
+				{ name: 'Objeto 3', tipo: 'cara' }
+			];
+			const content = player.imageTargets?.[0]?.arContent;
+			if (!content) throw new Error('No se encontró ARContent para los botones HD');
+			const buttons = definitions.map(({ name, tipo }) => {
+				const mesh = content.getObjectByName(name);
+				if (!mesh?.isMesh || !mesh.material?.map) {
+					throw new Error(`No se encontró ${name} o su textura PNG en el JSON`);
+				}
+				const texture = mesh.material.map;
+				const img = texture.image;
+				const url = img?.currentSrc || img?.src;
+				if (!url) throw new Error(`No se pudo obtener la imagen de ${name}`);
+				const button = document.createElement('button');
+				button.type = 'button';
+				button.className = 'nudo-hd-button';
+				button.setAttribute('aria-label', tipo === 'cara' ? 'Seña: Amor' : tipo === 'mano' ? 'Sigue aprendiendo' : '¿Sabías que...?');
+				const image = document.createElement('img');
+				image.src = url;
+				image.alt = '';
+				button.appendChild(image);
+				button.addEventListener('pointerdown', e => e.stopPropagation());
+				button.addEventListener('click', e => {
+					e.stopPropagation();
+					window.mostrarInfoNudo(tipo);
+				});
+				layer.appendChild(button);
+				// No se oculta el objeto 3D: debe seguir disponible como referencia.
+				// Solo se evita dibujar sus píxeles en WebGL.
+				const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+				for (const material of materials) {
+					material.colorWrite = false;
+					material.depthWrite = false;
+				}
+				return { mesh, button };
+			});
+
+			let targetVisible = false;
+			const hide = () => buttons.forEach(({button}) => button.style.display = 'none');
+			controller.addListener('found', it => {
+				if (it.arContent === content) targetVisible = true;
+			});
+			controller.addListener('lost', it => {
+				if (it.arContent === content) { targetVisible = false; hide(); cerrarInfoNudo(); }
+			});
+
+			const point = new THREE.Vector3();
+			function proyectar(mesh, x, y, camera, rect) {
+				point.set(x, y, 0).applyMatrix4(mesh.matrixWorld).project(camera);
+				return {
+					x: rect.left + (point.x + 1) * rect.width / 2,
+					y: rect.top + (1 - point.y) * rect.height / 2,
+					z: point.z
+				};
+			}
+			controller.addListener('update', () => {
+				if (!targetVisible || !controller.mindar) { hide(); return; }
+				const { scene, camera, renderer } = controller.mindar;
+				const rect = renderer.domElement.getBoundingClientRect();
+				if (!rect.width || !rect.height) { hide(); return; }
+				scene.updateMatrixWorld(true);
+				camera.updateMatrixWorld(true);
+				for (const { mesh, button } of buttons) {
+					if (!controller.objIsActive(mesh)) { button.style.display = 'none'; continue; }
+					// Cada botón es un plano de 1 × 1 en el JSON original.
+					const left = proyectar(mesh, -0.5, 0, camera, rect);
+					const right = proyectar(mesh, 0.5, 0, camera, rect);
+					const top = proyectar(mesh, 0, 0.5, camera, rect);
+					const bottom = proyectar(mesh, 0, -0.5, camera, rect);
+					if ([left,right,top,bottom].some(p => !Number.isFinite(p.x) || !Number.isFinite(p.y) || p.z < -1 || p.z > 1)) {
+						button.style.display = 'none'; continue;
+					}
+					const width = Math.hypot(right.x-left.x, right.y-left.y);
+					const height = Math.hypot(bottom.x-top.x, bottom.y-top.y);
+					const cx = (left.x+right.x+top.x+bottom.x)/4;
+					const cy = (left.y+right.y+top.y+bottom.y)/4;
+					const angle = Math.atan2(right.y-left.y, right.x-left.x);
+					if (width < 1 || height < 1) { button.style.display = 'none'; continue; }
+					button.style.width = `${width}px`;
+					button.style.height = `${height}px`;
+					button.style.transform = `translate(${cx-width/2}px,${cy-height/2}px) rotate(${angle}rad)`;
+					button.style.display = 'block';
+				}
+			});
 		}
 
 		// Al darle al botón start se inicia la cámara (requiere gesto del usuario).
