@@ -85,12 +85,13 @@
 	<div class="log" id="log">asdasdsa</div>
 
 	<div id="overlay">
-		<button id="start-button">Iniciar</button>
+		<img id="start-logo" src="assets/logo-nudo.png" alt="NÜDO">
+		<button id="start-button" type="button" style="display: none">Hoy es día de aprender una seña</button>
 		<div id="progress-container">
-			<div id="progress-bar-track">
+			<div id="progress-bar-track" class="is-indeterminate" role="progressbar" aria-label="Carga del programa" aria-valuemin="0" aria-valuemax="100">
 				<div id="progress-bar-fill"></div>
 			</div>
-			<div id="progress-label">Cargando... 0%</div>
+			<div id="progress-label" role="status" aria-live="polite">Estamos preparando la seña del día 0%</div>
 		</div>
 	</div>
 
@@ -108,6 +109,7 @@
 		const arContainer = document.getElementById('ar-container');
 		const progressContainer = document.getElementById('progress-container');
 		const progressFill = document.getElementById('progress-bar-fill');
+		const progressTrack = document.getElementById('progress-bar-track');
 		const progressLabel = document.getElementById('progress-label');
 
 		const debugMode = new URLSearchParams(location.search).get('debug') === '1';
@@ -115,13 +117,30 @@
 		let player = null;
 		let mindarController = null;
 		let loaded = false;
+		let starting = false;
 		let loadPromise = null;
 		//chat
 		let projectData = null;
 
 		function setProgress(percent, text) {
-			progressFill.style.width = `${percent}%`;
+			progressFill.style.width = percent === 0 ? '' : `${percent}%`;
+			progressTrack.classList.toggle('is-indeterminate', percent === 0);
+			if (percent === 0) progressTrack.removeAttribute('aria-valuenow');
+			else progressTrack.setAttribute('aria-valuenow', percent);
 			progressLabel.textContent = `${text} ${percent}%`;
+		}
+
+		function showLoading() {
+			startButton.style.display = 'none';
+			startButton.disabled = true;
+			progressContainer.style.display = 'flex';
+		}
+
+		function showStartButton(text = 'Hoy es día de aprender una seña') {
+			progressContainer.style.display = 'none';
+			startButton.textContent = text;
+			startButton.disabled = false;
+			startButton.style.display = '';
 		}
 
 		async function loadEverything() {
@@ -130,7 +149,7 @@
 
 			loadPromise = (async () => {
 
-				setProgress(0, 'Cargando escena...');
+				setProgress(0, 'Estamos preparando la seña del día');
 
 				// Descarga app.json con progreso real (0% - 25%)
 				const text = await new Promise((resolve, reject) => {
@@ -141,7 +160,7 @@
 						(e) => {
 							if (e.lengthComputable) {
 								const p = Math.round((e.loaded / e.total) * 25);
-								setProgress(p, 'Cargando escena...');
+								setProgress(p, 'Estamos preparando la seña del día');
 							}
 						},
 						(err) => reject(new Error(err.statusText || 'No se pudo descargar el json'))
@@ -156,7 +175,7 @@
 				//chat	
 				player.setSize(window.innerWidth, window.innerHeight);
 				player.play();
-				setProgress(55, 'Escena lista...');
+				setProgress(55, 'Estamos preparando la seña del día');
 
 				document.body.appendChild(player.dom);
 
@@ -166,12 +185,12 @@
 
 				window.player = player;
 
-				setProgress(85, 'Preparando AR...');
+				setProgress(85, 'Estamos preparando la seña del día');
 				log.textContent = 'initializing...';
 
 				await new Promise((resolve) => setTimeout(resolve, 10));
 
-				setProgress(100, 'Listo');
+				setProgress(85, 'Estamos preparando la seña del día');
 				loaded = true;
 
 				console.log(window.player);
@@ -291,13 +310,16 @@
 		// Al darle al botón start se inicia la cámara (requiere gesto del usuario).
 		startButton.addEventListener('click', async () => {
 
-			progressContainer.style.display = 'flex';
+			if (starting) return;
+			starting = true;
+			showLoading();
+			setProgress(loaded ? 90 : 0, 'Estamos preparando la seña del día');
 
 			try {
 				await loadEverything();
 				if (!loaded) return;
 
-				setProgress(90, 'Iniciando cámara...');
+				setProgress(90, 'Estamos preparando la seña del día');
 
 				// La cámara se inicia aquí, dentro del gesto del usuario.
 				mindarController = new MindARController(arContainer, player, debugMode);
@@ -321,6 +343,7 @@
 				//ESTA ACA ES CHAT DE AUDIO
 
 				await mindarController.start();
+				setProgress(100, 'Estamos preparando la seña del día');
 
 				// El player sigue funcionando (scripts/audio) pero su canvas ya no se usa.
 				if (player?.dom) player.dom.style.display = 'none';
@@ -329,17 +352,19 @@
 				setTimeout(() => overlay.remove(), 400);
 			} catch (e) {
 				console.error('Error durante la carga:', e);
-				startButton.textContent = 'Reintentar';
-				setProgress(0, 'Error al iniciar');
+				showStartButton('Reintentar');
+			} finally {
+				starting = false;
 			}
 		});
 
 		// Todo se carga automáticamente al abrir la página.
-		loadEverything().catch((e) => {
+		showLoading();
+		loadEverything().then(() => {
+			if (!starting) showStartButton();
+		}).catch((e) => {
 			console.error('Error durante la carga automática:', e.message);
-			progressContainer.style.display = 'flex';
-			setProgress(0, 'Error al cargar');
-			startButton.textContent = 'Reintentar';
+			if (!starting) showStartButton('Reintentar');
 		});
 
 	</script>
