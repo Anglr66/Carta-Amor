@@ -128,7 +128,7 @@
 				const text = await new Promise((resolve, reject) => {
 					const loader = new THREE.FileLoader();
 					loader.load(
-						'project (24).json',
+						'project (25).json',
 						(t) => resolve(t),
 						(e) => {
 							if (e.lengthComputable) {
@@ -178,6 +178,7 @@
 		// Se reutiliza directamente la textura PNG de cada objeto, sin redibujarla.
 		function instalarBotonesHD(controller, player) {
 			const layer = document.getElementById('nudo-hd-layer');
+            if (!layer) throw new Error('Falta la capa nudo-hd-layer');
 			const definitions = [
 				{ name: 'Objeto 1', tipo: 'mano' },
 				{ name: 'Objeto 2', tipo: 'corazon' },
@@ -187,12 +188,12 @@
 			if (!content) throw new Error('No se encontró ARContent para los botones HD');
 			const buttons = definitions.map(({ name, tipo }) => {
 				const mesh = content.getObjectByName(name);
-				if (!mesh?.isMesh || !mesh.material?.map) {
+				if (!mesh?.isMesh || !(Array.isArray(mesh.material) ? mesh.material[0]?.map : mesh.material?.map)) {
 					throw new Error(`No se encontró ${name} o su textura PNG en el JSON`);
 				}
-				const texture = mesh.material.map;
+				const texture = Array.isArray(mesh.material) ? mesh.material[0].map : mesh.material.map;
 				const img = texture.image;
-				const url = img?.currentSrc || img?.src;
+				const url = img?.currentSrc || img?.src || img?.toDataURL?.();
 				if (!url) throw new Error(`No se pudo obtener la imagen de ${name}`);
 				const button = document.createElement('button');
 				button.type = 'button';
