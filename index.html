@@ -35,6 +35,11 @@
 	.nudo-panel[data-type="corazon"]{background:#FCE4EB}.nudo-panel[data-type="mano"]{background:#FFF0C4}.nudo-panel[data-type="cara"]{background:#E2F0F7}
 	.nudo-eyebrow{font-size:11px;letter-spacing:2px;font-weight:800;margin:0 34px 12px 0}.nudo-panel h2{font-size:25px;line-height:1.2;margin:0 30px 12px 0}.nudo-panel p{font-size:15px;line-height:1.55;margin:0}
 	.nudo-close{position:absolute;top:12px;right:12px;border:2px solid var(--nudo-ink);background:white;border-radius:50%;width:36px;height:36px;font-size:23px;cursor:pointer}
+
+	/* Botones HTML superpuestos a la escena AR */
+    #nudo-hd-layer { position:fixed; inset:0; z-index:9997; pointer-events:none; overflow:hidden; }
+    .nudo-hd-button { position:absolute; left:0; top:0; display:none; box-sizing:border-box; margin:0; padding:0; border:0; background:transparent; cursor:pointer; pointer-events:auto; touch-action:manipulation; transform-origin:center center; will-change:transform,width,height; }
+    .nudo-hd-button img { display:block; width:100%; height:100%; object-fit:fill; pointer-events:none; user-select:none; -webkit-user-drag:none; }
 	</style>
 	/finchat
 </head>
@@ -42,6 +47,7 @@
 <body ontouchstart="">
 
 	<div id="ar-container"></div>
+	<div id="nudo-hd-layer" class="nudo-hd-layer" aria-label="Botones de realidad aumentada"></div>
 
 	//chat
 
@@ -74,7 +80,7 @@
   window.mostrarInfoNudo=mostrarInfoNudo; // útil para conectar objetos de Three.js después
 </script>
 
-/finchat
+//finchat
 
 	<div class="log" id="log">asdasdsa</div>
 
@@ -110,6 +116,8 @@
 		let mindarController = null;
 		let loaded = false;
 		let loadPromise = null;
+		//chat
+		let projectData = null;
 
 		function setProgress(percent, text) {
 			progressFill.style.width = `${percent}%`;
@@ -128,7 +136,7 @@
 				const text = await new Promise((resolve, reject) => {
 					const loader = new THREE.FileLoader();
 					loader.load(
-						'project (25).json',
+						'project (26).json',
 						(t) => resolve(t),
 						(e) => {
 							if (e.lengthComputable) {
@@ -140,8 +148,12 @@
 					);
 				});
 
+				//chat
+				projectData = JSON.parse(text);
+
 				player = new APP.Player({ alpha: true });
-				await player.load(JSON.parse(text));
+				await player.load(projectData);	
+				//chat	
 				player.setSize(window.innerWidth, window.innerHeight);
 				player.play();
 				setProgress(55, 'Escena lista...');
@@ -193,7 +205,15 @@
 				}
 				const texture = Array.isArray(mesh.material) ? mesh.material[0].map : mesh.material.map;
 				const img = texture.image;
-				const url = img?.currentSrc || img?.src || img?.toDataURL?.();
+				let url = img?.currentSrc || img?.src;
+                // Algunas versiones de Three.js convierten las texturas a ImageBitmap (sin .src).
+                // Recuperamos la imagen original incrustada en el JSON sin alterar su diseño.
+                if (!url && projectData) {
+                    const mat = (projectData.scene?.materials || []).find(m => m.uuid === mesh.material.uuid);
+                    const tex = (projectData.scene?.textures || []).find(t => t.uuid === mat?.map);
+                    const embedded = (projectData.scene?.images || []).find(i => i.uuid === tex?.image);
+                    url = embedded?.url;
+                }
 				if (!url) throw new Error(`No se pudo obtener la imagen de ${name}`);
 				const button = document.createElement('button');
 				button.type = 'button';
@@ -281,6 +301,8 @@
 
 				// La cámara se inicia aquí, dentro del gesto del usuario.
 				mindarController = new MindARController(arContainer, player, debugMode);
+				// Crear los botones y registrar sus eventos antes de iniciar MindAR, esto es de CHAT
+				instalarBotonesHD(mindarController, player);
 				window.mindarController = mindarController;
 
 				await mindarController.start();
