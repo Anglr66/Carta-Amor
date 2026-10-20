@@ -136,7 +136,7 @@
 				const text = await new Promise((resolve, reject) => {
 					const loader = new THREE.FileLoader();
 					loader.load(
-						'project (26).json',
+						'project (27).json',
 						(t) => resolve(t),
 						(e) => {
 							if (e.lengthComputable) {
@@ -304,6 +304,21 @@
 				// Crear los botones y registrar sus eventos antes de iniciar MindAR, esto es de CHAT
 				instalarBotonesHD(mindarController, player);
 				window.mindarController = mindarController;
+
+				// REPRODUCIR MÚSICA AL RECONOCER LA ESCENA_ACA COMIENZA CHAT DE AUDIO
+				mindarController.addListener('found', () => {
+					if (window.nudoAudio) {
+						window.nudoAudio.play();
+					}
+				});
+
+				// PAUSAR MÚSICA AL PERDER LA ESCENA
+				mindarController.addListener('lost', () => {
+					if (window.nudoAudio) {
+						window.nudoAudio.pause();
+					}
+				});
+				//ESTA ACA ES CHAT DE AUDIO
 
 				await mindarController.start();
 
