@@ -1,8 +1,14 @@
 body {
     font-family: sans-serif;
     font-size: 11px;
-    background-color: #000;
+    background-color: #fef9ee;
+    background-image: url('../assets/fondo.png');
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
     margin: 0px;
+    min-height: 100vh;
+    background-attachment: fixed;
 }
 
 canvas {
@@ -46,7 +52,11 @@ canvas {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    background-color: #000;
+    background-color: #fef9ee;
+    background-image: url('../assets/fondo.png');
+    background-position: center;
+    background-size: cover;
+    background-repeat: no-repeat;
     color: #fff;
     z-index: 2000;
     transition: opacity 0.4s ease;
@@ -57,46 +67,93 @@ canvas {
     pointer-events: none;
 }
 
-#start-button {
-    padding: 14px 36px;
+#start-logo {
+    display: block;
+    width: min(72vw, 360px);
+    height: auto;
+    margin-bottom: 32px;
+}
+
+#start-button,
+#progress-label {
+    box-sizing: border-box;
+    max-width: calc(100vw - 40px);
+    padding: 14px 28px;
+    border: 2px solid #e2287e;
+    border-radius: 30px;
+    color: #e2287e;
+    background-color: #fef9ee;
+    font-family: inherit;
     font-size: 16px;
     font-weight: bold;
-    color: #fff;
-    background-color: #1976d2;
-    border: none;
-    border-radius: 30px;
+    line-height: 1.4;
+    text-align: center;
+}
+
+#start-button {
     cursor: pointer;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+#start-button:hover {
+    background-color: #e2287e;
+    color: #fef9ee;
 }
 
 #start-button:active {
-    background-color: #145ea8;
+    background-color: #e2287e;
+    color: #fef9ee;
+    transform: scale(0.98);
+}
+
+#start-button:focus-visible {
+    outline: 3px solid #e2287e;
+    outline-offset: 4px;
 }
 
 #progress-container {
-    display: none;
+    display: flex;
     width: 70%;
-    max-width: 320px;
+    max-width: 400px;
+    margin-top: 24px;
     flex-direction: column;
     align-items: center;
 }
 
 #progress-bar-track {
     width: 100%;
-    height: 8px;
-    background-color: rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
+    height: 12px;
+    box-sizing: border-box;
+    border: 1px solid #e2287e;
+    background-color: #fef9ee;
+    border-radius: 999px;
     overflow: hidden;
 }
 
 #progress-bar-fill {
     width: 0%;
     height: 100%;
-    background-color: #1976d2;
+    background-color: #e2287e;
     transition: width 0.3s ease;
 }
 
 #progress-label {
     margin-top: 10px;
-    font-size: 13px;
-    color: #ccc;
+    width: 100%;
+}
+#progress-bar-track.is-indeterminate #progress-bar-fill {
+    width: 35%;
+    animation: nudo-loading 1.2s ease-in-out infinite;
+}
+
+@keyframes nudo-loading {
+    from { transform: translateX(-100%); }
+    to { transform: translateX(300%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    #progress-bar-track.is-indeterminate #progress-bar-fill {
+        animation: none;
+        transform: translateX(90%);
+    }
 }
